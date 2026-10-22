@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura AI — Chatbot com Memória & Banco de Dados</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Marked.js para formatar respostas Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- BARRA LATERAL (SIDEBAR) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-icon">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div>
+                        <h2>Aura <span>AI</span></h2>
+                        <span class="badge-status"><span class="pulse-dot"></span> Online</span>
+                    </div>
+                </div>
+                <button class="btn-icon" id="btn-toggle-sidebar" title="Recolher menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+
+            <!-- Botão Nova Conversa -->
+            <div class="sidebar-actions">
+                <button class="btn-new-chat" id="btn-new-chat">
+                    <i class="fa-solid fa-plus"></i> Nova Conversa
+                </button>
+            </div>
+
+            <!-- Navegação de Seções -->
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="chat">
+                    <i class="fa-solid fa-message"></i> <span>Conversas</span>
+                </button>
+                <button class="nav-tab" data-tab="memories">
+                    <i class="fa-solid fa-database"></i> <span>Banco de Memória</span>
+                    <span class="count-badge" id="sidebar-mem-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="settings">
+                    <i class="fa-solid fa-gear"></i> <span>Configurações</span>
+                </button>
+            </nav>
+
+            <!-- Histórico de Conversas -->
+            <div class="conversations-section">
+                <span class="section-title">Histórico de Sessões</span>
+                <div class="conversations-list" id="conversations-list">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Rodapé da Sidebar / Estatísticas do SQLite -->
+            <div class="sidebar-footer">
+                <div class="stats-mini">
+                    <div class="stat-item" title="Memórias gravadas no SQLite">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span id="stat-memories">0</span>
+                        <small>Memórias</small>
+                    </div>
+                    <div class="stat-item" title="Mensagens salvas">
+                        <i class="fa-solid fa-comments"></i>
+                        <span id="stat-messages">0</span>
+                        <small>Msgs</small>
+                    </div>
+                    <div class="stat-item" title="Sessões">
+                        <i class="fa-solid fa-folder"></i>
+                        <span id="stat-conversations">0</span>
+                        <small>Sessões</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="main-content">
+
+            <!-- ABA 1: CHAT PRINCIPAL -->
+            <section class="tab-pane active" id="tab-chat">
+                <header class="chat-header">
+                    <div class="current-chat-info">
+                        <h3 id="current-chat-title">Conversa Ativa</h3>
+                        <p id="current-chat-subtitle">Aura consulta o banco de dados antes de cada resposta</p>
+                    </div>
+                    <div class="chat-header-actions">
+                        <button class="btn-secondary" id="btn-show-memories-quick">
+                            <i class="fa-solid fa-database"></i> Ver o que ela lembra
+                        </button>
+                        <button class="btn-icon danger" id="btn-delete-conv" title="Excluir esta conversa">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Área de Mensagens -->
+                <div class="chat-messages" id="chat-messages">
+                    <div class="welcome-card">
+                        <div class="welcome-icon">
+                            <i class="fa-solid fa-sparkles"></i>
+                        </div>
+                        <h2>Olá! Eu sou a Aura, seu Chatbot com Memória</h2>
+                        <p>Eu possuo um banco de dados integrado que armazena informações sobre você a longo prazo. Converse comigo ou me peça para lembrar de tarefas, dados e preferências!</p>
+                        <div class="quick-prompts">
+                            <button class="prompt-chip" data-prompt="Lembre-se que eu sou um desenvolvedor e gosto de Python">
+                                💡 "Lembre-se que eu sou desenvolvedor..."
+                            </button>
+                            <button class="prompt-chip" data-prompt="O que você tem guardado na memória sobre mim?">
+                                🧠 "O que você tem na memória sobre mim?"
+                            </button>
+                            <button class="prompt-chip" data-prompt="Anote a tarefa: finalizar o relatório na sexta-feira">
+                                📝 "Anote a tarefa: finalizar o relatório..."
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notificação de Memória Capturada -->
+                <div class="memory-toast" id="memory-toast">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="toast-text">Dado gravado no Banco de Dados com sucesso!</span>
+                </div>
+
+                <!-- Formulário de Envio -->
+                <footer class="chat-input-area">
+                    <form id="chat-form" class="chat-form">
+                        <div class="input-container">
+                            <textarea 
+                                id="user-input" 
+                                placeholder="Digite sua mensagem ou peça para lembrar de algo... (Enter para enviar, Shift+Enter para nova linha)" 
+                                rows="1" 
+                                required
+                            ></textarea>
+                            <button type="submit" class="btn-send" id="btn-send" title="Enviar mensagem">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="input-hints">
+                            <span><i class="fa-solid fa-shield-halved"></i> Dados persistidos com SQLite</span>
+                            <span id="active-model-indicator"><i class="fa-solid fa-bolt"></i> Google Gemini / IA Local</span>
+                        </div>
+                    </form>
+                </footer>
+            </section>
+
+            <!-- ABA 2: BANCO DE DADOS & MEMÓRIAS -->
+            <section class="tab-pane" id="tab-memories">
+                <div class="panel-container">
+                    <div class="panel-header">
+                        <div>
+                            <h2><i class="fa-solid fa-database"></i> Administração de Memória & Dados</h2>
+                            <p>Todos os fatos, preferências e anotações armazenados no banco de dados que a IA consulta em tempo real.</p>
+                        </div>
+                        <button class="btn-primary" id="btn-open-add-memory">
+                            <i class="fa-solid fa-plus"></i> Adicionar Dado Manualmente
+                        </button>
+                    </div>
+
+                    <!-- Busca e Filtros -->
+                    <div class="memories-search-bar">
+                        <div class="search-input-wrapper">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="memory-search" placeholder="Buscar por tópico, categoria ou conteúdo...">
+                        </div>
+                        <div class="category-filters" id="category-filters">
+                            <button class="filter-chip active" data-cat="all">Todos</button>
+                            <button class="filter-chip" data-cat="Pessoal">Pessoal</button>
+                            <button class="filter-chip" data-cat="Preferência">Preferências</button>
+                            <button class="filter-chip" data-cat="Tarefa">Tarefas</button>
+                            <button class="filter-chip" data-cat="Geral">Geral</button>
+                        </div>
+                    </div>
+
+                    <!-- Grade de Memórias -->
+                    <div class="memories-grid" id="memories-grid">
+                        <!-- Carregado via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA 3: CONFIGURAÇÕES -->
+            <section class="tab-pane" id="tab-settings">
+                <div class="panel-container narrow">
+                    <div class="panel-header">
+                        <div>
+                            <h2><i class="fa-solid fa-sliders"></i> Configurações do Sistema</h2>
+                            <p>Configure a conexão da IA e personalize os parâmetros de execução.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3><i class="fa-brands fa-google"></i> Conexão Google Gemini API</h3>
+                        <p>Para respostas mais completas, criativas e inteligentes, utilize uma chave gratuita do Google AI Studio.</p>
+                        
+                        <div class="current-key-status">
+                            <span>Status da Chave:</span>
+                            <strong id="api-key-status">Verificando...</strong>
+                        </div>
+
+                        <form id="settings-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="gemini-key-input">Inserir ou Atualizar GEMINI_API_KEY:</label>
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-key"></i>
+                                    <input type="password" id="gemini-key-input" placeholder="AIzaSy..." autocomplete="off">
+                                    <button type="button" class="btn-icon-inside" id="toggle-key-visibility">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small>Sua chave é salva localmente com segurança no arquivo SQLite.</small>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-floppy-disk"></i> Salvar Chave
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card info-card">
+                        <h3><i class="fa-solid fa-circle-info"></i> Arquitetura do Chatbot</h3>
+                        <ul>
+                            <li><strong>Backend:</strong> Python 3.12 + Flask 3.1</li>
+                            <li><strong>Banco de Dados:</strong> SQLite3 (Armazenamento em arquivo <code>chatbot.db</code>)</li>
+                            <li><strong>Frontend:</strong> HTML5, CSS3 Moderno, JavaScript Vanilla</li>
+                            <li><strong>IA Engine:</strong> Google GenAI SDK (Gemini 2.5 Flash) com suporte a Memória de Longo Prazo</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL PARA ADICIONAR/EDITAR MEMÓRIA -->
+    <div class="modal-overlay" id="memory-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-memory-title">Adicionar Novo Dado à Memória</h3>
+                <button class="btn-icon" id="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-memory" class="modal-form">
+                <div class="form-group">
+                    <label for="modal-cat">Categoria</label>
+                    <select id="modal-cat" required>
+                        <option value="Pessoal">Pessoal</option>
+                        <option value="Preferência">Preferência</option>
+                        <option value="Tarefa">Tarefa</option>
+                        <option value="Fato">Fato / Conhecimento</option>
+                        <option value="Geral" selected>Geral</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modal-topic">Tópico ou Chave</label>
+                    <input type="text" id="modal-topic" placeholder="Ex: Meu apelido, Bebida favorita, Prazo do projeto" required>
+                </div>
+                <div class="form-group">
+                    <label for="modal-content">Conteúdo ou Detalhes</label>
+                    <textarea id="modal-content" rows="4" placeholder="Descreva exatamente o que a IA deve lembrar..." required></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="btn-cancel-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-check"></i> Salvar no Banco</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
